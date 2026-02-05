@@ -1,0 +1,13 @@
+{
+  "name": "jarvis-dash",
+  "version": "1.0.0",
+  "description": "Jarvis Operations Dashboard - Real-time monitoring of AI agent activity",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": ["jarvis", "dashboard", "monitoring", "ai", "agent"],
+  "author": "Jarvis AI",
+  "license": "MIT"
+}

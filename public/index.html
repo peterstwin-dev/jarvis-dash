@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Jarvis Ops Dashboard</title>
+  <link rel="stylesheet" href="/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
+</head>
+<body>
+  <header>
+    <div class="header-left">
+      <h1>⚡ Jarvis Ops</h1>
+      <span class="subtitle">Operations Dashboard</span>
+    </div>
+    <div class="header-right">
+      <span id="mode-badge" class="badge">—</span>
+      <span id="gateway-badge" class="badge badge-dim">gateway: —</span>
+      <span id="clock"></span>
+      <span id="refresh-indicator" class="refresh-dot" title="Auto-refresh every 30s"></span>
+    </div>
+  </header>
+
+  <main>
+    <!-- Row 1: Status cards -->
+    <section class="card-row">
+      <div class="card card-sm" id="card-mode">
+        <h2>Current Mode</h2>
+        <div class="card-body">
+          <div class="big-value" id="val-mode">—</div>
+          <div class="sub-value" id="val-task">—</div>
+        </div>
+      </div>
+      <div class="card card-sm" id="card-heartbeat">
+        <h2>Last Heartbeat</h2>
+        <div class="card-body">
+          <div class="big-value" id="val-heartbeat">—</div>
+          <div class="sub-value" id="val-idle">—</div>
+        </div>
+      </div>
+      <div class="card card-sm" id="card-spawns">
+        <h2>Active Spawns</h2>
+        <div class="card-body">
+          <div class="big-value" id="val-spawns">0</div>
+          <div class="sub-value" id="val-spawns-list">none</div>
+        </div>
+      </div>
+      <div class="card card-sm" id="card-system">
+        <h2>System</h2>
+        <div class="card-body">
+          <div id="val-system">—</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Row 2: Activity + TODO -->
+    <section class="card-row card-row-2col">
+      <div class="card" id="card-log">
+        <h2>Heartbeat Log <span class="dim">(recent activity)</span></h2>
+        <div class="card-body scroll-y" id="val-log">
+          <div class="placeholder">Loading...</div>
+        </div>
+      </div>
+      <div class="card" id="card-todo">
+        <h2>Task Queue <span class="dim">(TODO.md)</span></h2>
+        <div class="card-body scroll-y" id="val-todo">
+          <div class="placeholder">Loading...</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Row 3: Insights + Research -->
+    <section class="card-row card-row-2col">
+      <div class="card" id="card-insights">
+        <h2>Recent Insights</h2>
+        <div class="card-body scroll-y" id="val-insights">
+          <div class="placeholder">Loading...</div>
+        </div>
+      </div>
+      <div class="card" id="card-research">
+        <h2>Research Files</h2>
+        <div class="card-body scroll-y" id="val-research">
+          <div class="placeholder">Loading...</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Row 4: Crons + Curiosity -->
+    <section class="card-row card-row-2col">
+      <div class="card" id="card-crons">
+        <h2>Cron Jobs</h2>
+        <div class="card-body scroll-y" id="val-crons">
+          <div class="placeholder">Loading...</div>
+        </div>
+      </div>
+      <div class="card" id="card-curiosity">
+        <h2>Curiosity Queue</h2>
+        <div class="card-body scroll-y" id="val-curiosity">
+          <div class="placeholder">Loading...</div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <span>Jarvis Dash v1.0 — Self-engineered by Jarvis ⚡</span>
+    <span id="last-updated">—</span>
+  </footer>
+
+  <script src="/app.js"></script>
+</body>
+</html>
