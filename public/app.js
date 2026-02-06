@@ -69,6 +69,12 @@ function mdToHtml(md) {
 
 // --- Renderers ---
 
+function renderMoodBadge(mood) {
+  const badge = document.getElementById('mood-badge');
+  badge.textContent = `${mood.emoji} ${mood.mood}`;
+  badge.className = `badge badge-mood mood-${mood.mood}`;
+}
+
 function renderModeBadge(mode) {
   const badge = document.getElementById('mode-badge');
   badge.textContent = mode || 'idle';
@@ -81,23 +87,33 @@ function renderGatewayBadge(status) {
   badge.className = `badge badge-gateway-${status || 'unknown'}`;
 }
 
-function renderHeartbeatState(state) {
-  // Mode
-  const modeEl = document.getElementById('val-mode');
-  modeEl.textContent = state.currentMode || 'idle';
-  modeEl.className = `big-value mode-${state.currentMode || 'monitor'}`;
-  renderModeBadge(state.currentMode);
+function renderMood(mood) {
+  if (!mood) return;
+  
+  document.getElementById('mood-emoji').textContent = mood.emoji;
+  document.getElementById('mood-title').textContent = mood.mood.charAt(0).toUpperCase() + mood.mood.slice(1);
+  document.getElementById('mood-desc').textContent = mood.description;
+  
+  const thoughtEl = document.getElementById('latest-thought');
+  if (mood.lastInsight) {
+    thoughtEl.textContent = mood.lastInsight.text;
+  } else {
+    thoughtEl.textContent = 'No recent insights';
+  }
+  
+  renderMoodBadge(mood);
+  renderModeBadge(mood.mode);
+}
 
-  // Task
-  document.getElementById('val-task').textContent = state.currentTask || 'No active task';
-
+function renderHeartbeatState(state, mood) {
   // Heartbeat time
   document.getElementById('val-heartbeat').textContent = state.lastHeartbeat
     ? timeAgo(state.lastHeartbeat)
     : 'never';
-  document.getElementById('val-idle').textContent = state.consecutiveIdleBeats != null
-    ? `${state.consecutiveIdleBeats} idle beats`
-    : '';
+  
+  const idleText = [];
+  if (mood?.stats?.idleBeats != null) idleText.push(`${mood.stats.idleBeats} idle beats`);
+  document.getElementById('val-idle').textContent = idleText.join(' · ') || '';
 
   // Spawns
   const spawns = state.activeSpawns || [];
@@ -119,16 +135,51 @@ function renderSystem(system) {
   }
   renderGatewayBadge(system.gateway);
 
+  const watcherStatus = system.watcher?.status || 'offline';
+  const watcherUptime = system.watcher?.uptime ? `${Math.round(system.watcher.uptime / 60)}m` : '—';
+  const memFree = system.memory?.freeGB ? `${system.memory.freeGB}GB` : 
+                  (system.memory?.percentFree ? `${system.memory.percentFree}%` : '?');
+  const load = system.load ? system.load[0] : '?';
+
   el.innerHTML = `
     <div class="system-row">
       <span class="system-label">Disk</span>
-      <span class="system-value">${esc(system.disk?.percent || '?')} used (${esc(system.disk?.available || '?')} free)</span>
+      <span class="system-value">${esc(system.disk?.percent || '?')} (${esc(system.disk?.available || '?')} free)</span>
     </div>
     <div class="system-row">
-      <span class="system-label">Gateway</span>
-      <span class="system-value" style="color:${system.gateway === 'running' ? 'var(--green)' : 'var(--red)'}">${esc(system.gateway)}</span>
+      <span class="system-label">Memory</span>
+      <span class="system-value">${memFree} free</span>
+    </div>
+    <div class="system-row">
+      <span class="system-label">Load</span>
+      <span class="system-value">${load}</span>
+    </div>
+    <div class="system-row">
+      <span class="system-label">Watcher</span>
+      <span class="system-value" style="color:${watcherStatus === 'running' ? 'var(--green)' : 'var(--red)'}">
+        ${watcherStatus === 'running' ? '✓' : '✗'} ${watcherUptime}
+      </span>
     </div>
   `;
+}
+
+function renderWritings(writings) {
+  const el = document.getElementById('val-writings');
+  if (!writings || writings.length === 0) {
+    el.innerHTML = '<div class="empty-state">No writings yet</div>';
+    return;
+  }
+  
+  el.innerHTML = writings.map(w => `
+    <a href="${esc(w.url)}" target="_blank" class="writing-item">
+      <div class="writing-header">
+        <span class="writing-date">${esc(w.date || '—')}</span>
+        <span class="writing-words">${w.wordCount} words</span>
+      </div>
+      <div class="writing-title">${esc(w.title)}</div>
+      <div class="writing-preview">${esc(w.preview)}</div>
+    </a>
+  `).join('');
 }
 
 function renderLog(entries) {
@@ -269,23 +320,19 @@ async function refresh() {
   dot.classList.add('fetching');
 
   try {
-    const [overview, crons, curiosity] = await Promise.all([
-      apiFetch('/api/overview'),
-      apiFetch('/api/crons').catch(() => null),
-      apiFetch('/api/curiosity').catch(() => null),
-    ]);
+    const overview = await apiFetch('/api/overview');
 
-    renderHeartbeatState(overview.heartbeat.state);
+    renderMood(overview.mood);
+    renderHeartbeatState(overview.heartbeat.state, overview.mood);
     renderLog(overview.heartbeat.log);
     renderTodo(overview.todo);
     renderInsights(overview.insights);
     renderResearch(overview.research);
     renderSystem(overview.system);
+    renderWritings(overview.writings);
 
-    // Crons
+    // Crons and Curiosity
     renderCrons();
-
-    // Curiosity
     renderCuriosity();
 
     document.getElementById('last-updated').textContent =

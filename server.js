@@ -8,6 +8,8 @@ const WORKSPACE = process.env.OPENCLAW_WORKSPACE || join(process.env.HOME, '.ope
 const MEMORY_DIR = join(WORKSPACE, 'memory');
 const RESEARCH_DIR = join(MEMORY_DIR, 'research');
 const PUBLIC_DIR = join(import.meta.dirname, 'public');
+const WRITINGS_DIR = join(process.env.HOME, 'workspace', 'jarvis-writes', 'posts');
+const WATCHER_URL = 'http://127.0.0.1:18790';
 
 const MIME_TYPES = {
   '.html': 'text/html',
@@ -195,15 +197,39 @@ async function getSystemHealth() {
     const uptime = execSync('uptime', { encoding: 'utf-8' }).trim();
     const diskRaw = execSync("df -h / | tail -1", { encoding: 'utf-8' }).trim();
     const diskParts = diskRaw.split(/\s+/);
-    const memRaw = execSync("vm_stat | head -5", { encoding: 'utf-8' }).trim();
+    
+    // Parse memory properly
+    const memRaw = execSync("vm_stat", { encoding: 'utf-8' });
+    const pageSize = 16384; // Apple Silicon default
+    const freeMatch = memRaw.match(/Pages free:\s+(\d+)/);
+    const inactiveMatch = memRaw.match(/Pages inactive:\s+(\d+)/);
+    const speculativeMatch = memRaw.match(/Pages speculative:\s+(\d+)/);
+    const freePages = parseInt(freeMatch?.[1] || 0) + parseInt(inactiveMatch?.[1] || 0) + parseInt(speculativeMatch?.[1] || 0);
+    const freeGB = ((freePages * pageSize) / 1024 / 1024 / 1024).toFixed(1);
+    
+    // Get CPU load
+    const loadAvg = execSync("sysctl -n vm.loadavg", { encoding: 'utf-8' }).trim();
+    const loads = loadAvg.match(/\{ ([\d.]+) ([\d.]+) ([\d.]+) \}/);
+    
+    // Get process count
+    const procCount = execSync("ps aux | wc -l", { encoding: 'utf-8' }).trim();
 
-    // Check if gateway is reachable
+    // Check gateway
     let gatewayStatus = 'unknown';
     try {
       const resp = await fetch('http://127.0.0.1:18789/', { signal: AbortSignal.timeout(2000) });
       gatewayStatus = resp.ok || resp.status === 404 ? 'running' : 'error';
     } catch {
       gatewayStatus = 'unreachable';
+    }
+
+    // Check watcher
+    let watcherData = null;
+    try {
+      const resp = await fetch(WATCHER_URL, { signal: AbortSignal.timeout(2000) });
+      if (resp.ok) watcherData = await resp.json();
+    } catch {
+      // Watcher not running
     }
 
     return {
@@ -214,24 +240,150 @@ async function getSystemHealth() {
         available: diskParts[3],
         percent: diskParts[4],
       },
-      memory: memRaw,
+      memory: {
+        freeGB,
+        percentFree: watcherData?.monitors?.resources?.memory || null,
+      },
+      load: loads ? [loads[1], loads[2], loads[3]] : null,
+      processes: parseInt(procCount) || 0,
       gateway: gatewayStatus,
+      watcher: watcherData ? {
+        status: watcherData.status,
+        uptime: watcherData.uptime,
+        heartbeat: watcherData.monitors?.heartbeat,
+        failures: watcherData.monitors?.gateway?.failures || 0,
+      } : null,
     };
   } catch (e) {
     return { error: e.message };
   }
 }
 
+async function getWritings() {
+  try {
+    const files = await readdir(WRITINGS_DIR);
+    const posts = [];
+    for (const file of files.filter(f => f.endsWith('.md')).sort().reverse()) {
+      const content = await readFileSafe(join(WRITINGS_DIR, file));
+      if (!content) continue;
+      
+      const lines = content.split('\n');
+      const title = lines.find(l => l.startsWith('# '))?.replace('# ', '') || file;
+      
+      // Extract date from filename (YYYY-MM-DD-slug.md)
+      const dateMatch = file.match(/^(\d{4}-\d{2}-\d{2})/);
+      const date = dateMatch ? dateMatch[1] : null;
+      
+      // Get word count
+      const wordCount = content.split(/\s+/).length;
+      
+      // Get preview (first paragraph after title)
+      const previewLines = [];
+      let started = false;
+      for (const line of lines) {
+        if (line.startsWith('# ')) { started = true; continue; }
+        if (started && line.trim()) {
+          previewLines.push(line);
+          if (previewLines.length >= 3) break;
+        }
+      }
+      
+      posts.push({
+        file,
+        title,
+        date,
+        wordCount,
+        preview: previewLines.join(' ').slice(0, 200),
+        url: `https://github.com/peterstwin-dev/jarvis-writes/blob/main/posts/${file}`,
+      });
+    }
+    return posts;
+  } catch {
+    return [];
+  }
+}
+
+async function getMood() {
+  const state = await getHeartbeatState();
+  const insights = state.recentInsights || [];
+  const lastInsight = insights[0];
+  
+  // Derive mood from current state
+  const mode = state.currentMode || 'monitor';
+  const idleBeats = state.consecutiveIdleBeats || 0;
+  const hasActiveWork = !!state.currentTask;
+  const recentInsightCount = insights.length;
+  
+  // Calculate last heartbeat age
+  const lastBeat = state.lastHeartbeat;
+  const beatAgeMin = lastBeat ? (Date.now() / 1000 - lastBeat) / 60 : 999;
+  
+  // Mood logic
+  let mood, emoji, description;
+  
+  if (beatAgeMin > 45) {
+    mood = 'dormant';
+    emoji = '😴';
+    description = 'Heartbeat stale — might be asleep or between sessions';
+  } else if (mode === 'build' && hasActiveWork) {
+    mood = 'focused';
+    emoji = '🔨';
+    description = `Deep in build mode: ${state.currentTask}`;
+  } else if (mode === 'research') {
+    mood = 'curious';
+    emoji = '🔬';
+    description = 'Exploring, learning, documenting';
+  } else if (mode === 'create') {
+    mood = 'creative';
+    emoji = '✨';
+    description = 'Writing, experimenting, making new things';
+  } else if (mode === 'reflect') {
+    mood = 'introspective';
+    emoji = '🪞';
+    description = 'Reviewing memories, finding patterns';
+  } else if (idleBeats > 3) {
+    mood = 'calm';
+    emoji = '🌙';
+    description = 'Quiet period — systems healthy, nothing urgent';
+  } else if (recentInsightCount > 5) {
+    mood = 'productive';
+    emoji = '⚡';
+    description = 'Lots of recent activity and insights';
+  } else {
+    mood = 'attentive';
+    emoji = '👁️';
+    description = 'Monitoring, ready to engage';
+  }
+  
+  return {
+    mood,
+    emoji,
+    description,
+    mode,
+    lastInsight: lastInsight ? {
+      timestamp: lastInsight.timestamp,
+      text: lastInsight.insight.slice(0, 150) + (lastInsight.insight.length > 150 ? '...' : ''),
+    } : null,
+    stats: {
+      idleBeats,
+      recentInsights: recentInsightCount,
+      heartbeatAgeMin: Math.round(beatAgeMin),
+    },
+  };
+}
+
 // --- Overview endpoint (combines key data for single fetch) ---
 
 async function getOverview() {
-  const [heartbeatState, heartbeatLog, todo, research, insights, system] = await Promise.all([
+  const [heartbeatState, heartbeatLog, todo, research, insights, system, writings, mood] = await Promise.all([
     getHeartbeatState(),
     getHeartbeatLog(),
     getTodo(),
     getResearchFiles(),
     getInsights(),
     getSystemHealth(),
+    getWritings(),
+    getMood(),
   ]);
 
   return {
@@ -244,6 +396,8 @@ async function getOverview() {
     research: research.map(r => ({ file: r.file, title: r.title, wordCount: r.wordCount, modified: r.modified })),
     insights,
     system,
+    writings,
+    mood,
   };
 }
 
@@ -261,6 +415,8 @@ const API_ROUTES = {
   '/api/daily': getDailyMemory,
   '/api/briefing': getMorningBriefing,
   '/api/system': getSystemHealth,
+  '/api/writings': getWritings,
+  '/api/mood': getMood,
 };
 
 async function serveStatic(res, urlPath) {

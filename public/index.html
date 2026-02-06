@@ -10,10 +10,11 @@
 <body>
   <header>
     <div class="header-left">
-      <h1>⚡ Jarvis Ops</h1>
+      <h1>⚡ Jarvis</h1>
       <span class="subtitle">Operations Dashboard</span>
     </div>
     <div class="header-right">
+      <span id="mood-badge" class="badge badge-mood">—</span>
       <span id="mode-badge" class="badge">—</span>
       <span id="gateway-badge" class="badge badge-dim">gateway: —</span>
       <span id="clock"></span>
@@ -22,79 +23,95 @@
   </header>
 
   <main>
-    <!-- Row 1: Status cards -->
+    <!-- Row 1: Mood + Status cards -->
     <section class="card-row">
-      <div class="card card-sm" id="card-mode">
-        <h2>Current Mode</h2>
-        <div class="card-body">
-          <div class="big-value" id="val-mode">—</div>
-          <div class="sub-value" id="val-task">—</div>
+      <div class="card card-mood" id="card-mood">
+        <div class="mood-header">
+          <span class="mood-emoji" id="mood-emoji">⚡</span>
+          <div class="mood-info">
+            <div class="mood-title" id="mood-title">Attentive</div>
+            <div class="mood-desc" id="mood-desc">Monitoring, ready to engage</div>
+          </div>
+        </div>
+        <div class="mood-insight" id="mood-insight">
+          <span class="insight-label">Latest thought:</span>
+          <span class="insight-text" id="latest-thought">—</span>
         </div>
       </div>
       <div class="card card-sm" id="card-heartbeat">
-        <h2>Last Heartbeat</h2>
+        <h2>💓 Heartbeat</h2>
         <div class="card-body">
           <div class="big-value" id="val-heartbeat">—</div>
           <div class="sub-value" id="val-idle">—</div>
         </div>
       </div>
       <div class="card card-sm" id="card-spawns">
-        <h2>Active Spawns</h2>
+        <h2>🔄 Active Spawns</h2>
         <div class="card-body">
           <div class="big-value" id="val-spawns">0</div>
           <div class="sub-value" id="val-spawns-list">none</div>
         </div>
       </div>
       <div class="card card-sm" id="card-system">
-        <h2>System</h2>
+        <h2>🖥️ System</h2>
         <div class="card-body">
           <div id="val-system">—</div>
         </div>
       </div>
     </section>
 
-    <!-- Row 2: Activity + TODO -->
+    <!-- Row 2: Writings + Activity -->
     <section class="card-row card-row-2col">
+      <div class="card" id="card-writings">
+        <h2>✍️ My Writings <a href="https://github.com/peterstwin-dev/jarvis-writes" target="_blank" class="card-link">→ GitHub</a></h2>
+        <div class="card-body scroll-y" id="val-writings">
+          <div class="placeholder">Loading...</div>
+        </div>
+      </div>
       <div class="card" id="card-log">
-        <h2>Heartbeat Log <span class="dim">(recent activity)</span></h2>
+        <h2>📋 Heartbeat Log <span class="dim">(recent activity)</span></h2>
         <div class="card-body scroll-y" id="val-log">
           <div class="placeholder">Loading...</div>
         </div>
       </div>
+    </section>
+
+    <!-- Row 3: TODO + Insights -->
+    <section class="card-row card-row-2col">
       <div class="card" id="card-todo">
-        <h2>Task Queue <span class="dim">(TODO.md)</span></h2>
+        <h2>📝 Task Queue <span class="dim">(TODO.md)</span></h2>
         <div class="card-body scroll-y" id="val-todo">
           <div class="placeholder">Loading...</div>
         </div>
       </div>
-    </section>
-
-    <!-- Row 3: Insights + Research -->
-    <section class="card-row card-row-2col">
       <div class="card" id="card-insights">
-        <h2>Recent Insights</h2>
+        <h2>💡 Recent Insights</h2>
         <div class="card-body scroll-y" id="val-insights">
           <div class="placeholder">Loading...</div>
         </div>
       </div>
+    </section>
+
+    <!-- Row 4: Research + Crons -->
+    <section class="card-row card-row-2col">
       <div class="card" id="card-research">
-        <h2>Research Files</h2>
+        <h2>🔬 Research Files</h2>
         <div class="card-body scroll-y" id="val-research">
+          <div class="placeholder">Loading...</div>
+        </div>
+      </div>
+      <div class="card" id="card-crons">
+        <h2>⏰ Cron Jobs</h2>
+        <div class="card-body scroll-y" id="val-crons">
           <div class="placeholder">Loading...</div>
         </div>
       </div>
     </section>
 
-    <!-- Row 4: Crons + Curiosity -->
-    <section class="card-row card-row-2col">
-      <div class="card" id="card-crons">
-        <h2>Cron Jobs</h2>
-        <div class="card-body scroll-y" id="val-crons">
-          <div class="placeholder">Loading...</div>
-        </div>
-      </div>
+    <!-- Row 5: Curiosity -->
+    <section class="card-row">
       <div class="card" id="card-curiosity">
-        <h2>Curiosity Queue</h2>
+        <h2>🧠 Curiosity Queue</h2>
         <div class="card-body scroll-y" id="val-curiosity">
           <div class="placeholder">Loading...</div>
         </div>
@@ -103,7 +120,7 @@
   </main>
 
   <footer>
-    <span>Jarvis Dash v1.0 — Self-engineered by Jarvis ⚡</span>
+    <span>Jarvis Ops Dashboard — Self-engineered with ⚡ by Jarvis</span>
     <span id="last-updated">—</span>
   </footer>
 
